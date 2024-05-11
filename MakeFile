@@ -18,9 +18,10 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
-# Modifications made by Levi Pereira (https://forums.developer.nvidia.com/u/levi_pereira/activity):
-#  - Customized on nvdsinfer_custombboxparser.cpp  by creating the nvdsinfer_yolo_efficient_nms.cpp
+#
+# Author: Levi Pereira 
+# https://forums.developer.nvidia.com/u/levi_pereira/activity
+# https://github.com/levipereira
 ################################################################################
 
 CC:= g++
@@ -35,8 +36,8 @@ CFLAGS+= -I/opt/nvidia/deepstream/deepstream/sources/includes \
 LIBS:= -lnvinfer -lnvparsers
 LFLAGS:= -Wl,--start-group $(LIBS) -Wl,--end-group
 
-SRCFILES:= nvdsinfer_yolo_nms.cpp 
-TARGET_LIB:= libnvds_infer_yolo_nms.so
+SRCFILES:= nvdsinfer_yolo.cpp 
+TARGET_LIB:= libnvds_infer_yolo.so
 
 all: $(TARGET_LIB)
 

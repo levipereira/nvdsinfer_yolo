@@ -18,11 +18,10 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
-
-
-
- * Modifications made by Levi Pereira (https://forums.developer.nvidia.com/u/levi_pereira/activity):
- *  - Customized the function NvDsInferParseCustomEfficientNMS by creating the NvDsInferYoloEfficientNMS.
+ *
+ * Author: Levi Pereira 
+ * https://forums.developer.nvidia.com/u/levi_pereira/activity
+ * https://github.com/levipereira
  */
 
 
@@ -37,6 +36,12 @@
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 #define CLIP(a,min,max) (MAX(MIN(a, max), min))
 
+void printRawMask(const float* rawMask, int size) {
+    for (int i = 0; i < size; ++i) {
+        std::cout << rawMask[i] << " ";
+    }
+    std::cout << std::endl;
+}
 
 /* C-linkage to prevent name-mangling */
 extern "C"
@@ -44,6 +49,12 @@ bool NvDsInferYoloNMS (std::vector<NvDsInferLayerInfo> const &outputLayersInfo,
                                    NvDsInferNetworkInfo  const &networkInfo,
                                    NvDsInferParseDetectionParams const &detectionParams,
                                    std::vector<NvDsInferObjectDetectionInfo> &objectList);
+
+extern "C" bool NvDsInferYoloMask(
+    std::vector<NvDsInferLayerInfo> const &outputLayersInfo,
+    NvDsInferNetworkInfo const &networkInfo,
+    NvDsInferParseDetectionParams const &detectionParams,
+    std::vector<NvDsInferInstanceMaskInfo> &objectList);
                                    
 
 extern "C"
@@ -185,4 +196,171 @@ bool NvDsInferYoloNMS (std::vector<NvDsInferLayerInfo> const &outputLayersInfo,
     return true;
 }
 
+
+extern "C" bool NvDsInferYoloMask(
+    std::vector<NvDsInferLayerInfo> const &outputLayersInfo,
+    NvDsInferNetworkInfo const &networkInfo,
+    NvDsInferParseDetectionParams const &detectionParams,
+    std::vector<NvDsInferInstanceMaskInfo> &objectList)
+{
+    if (outputLayersInfo.size() != 5) {
+        std::cerr << "Mismatch in the number of output buffers."
+                  << "Expected 5 output buffers, detected in the network :"
+                  << outputLayersInfo.size() << std::endl;
+        return false;
+    }
+    
+    auto layerFinder = [&outputLayersInfo](const std::string &name)
+        -> const NvDsInferLayerInfo *{
+        for (auto &layer : outputLayersInfo) {
+            if (layer.layerName && name == layer.layerName) {
+                return &layer;
+            }
+        }
+        return nullptr;
+    };
+
+    const NvDsInferLayerInfo *num_detsLayer = layerFinder("num_dets");
+    const NvDsInferLayerInfo *boxesLayer = layerFinder("det_boxes");
+    const NvDsInferLayerInfo *scoresLayer = layerFinder("det_scores");
+    const NvDsInferLayerInfo *classesLayer = layerFinder("det_classes");
+    const NvDsInferLayerInfo *masksLayer = layerFinder("det_masks");
+
+    if (!num_detsLayer || !boxesLayer || !scoresLayer || !classesLayer || !masksLayer) {
+        if (!num_detsLayer) {
+            std::cerr << "  - num_detsLayer: Missing or unsupported data type." << std::endl;
+        }
+
+        if (!boxesLayer) {
+            std::cerr << "  - boxesLayer: Missing or unsupported data type." << std::endl;
+        }
+
+        if (!scoresLayer) {
+            std::cerr << "  - scoresLayer: Missing or unsupported data type." << std::endl;
+        }
+
+        if (!classesLayer) {
+            std::cerr << "  - classesLayer: Missing or unsupported data type." << std::endl;
+        }
+
+        if (!masksLayer) {
+            std::cerr << "  - masksLayer: Missing or unsupported data type." << std::endl;
+        }
+        return false;
+    }
+
+    if(num_detsLayer->inferDims.numDims != 1U) {
+        std::cerr << "Network num_dets dims is : " <<
+            num_detsLayer->inferDims.numDims << " expect is 1"<< std::endl;
+        return false;
+    }
+    if(boxesLayer->inferDims.numDims != 2U) {
+        std::cerr << "Network det_boxes dims is : " <<
+            boxesLayer->inferDims.numDims << " expect is 2"<< std::endl;
+        return false;
+    }
+    if(scoresLayer->inferDims.numDims != 1U) {
+        std::cerr << "Network det_scores dims is : " <<
+            scoresLayer->inferDims.numDims << " expect is 1"<< std::endl;
+        return false;
+    }
+    if(classesLayer->inferDims.numDims != 1U) {
+        std::cerr << "Network det_classes dims is : " <<
+            classesLayer->inferDims.numDims << " expect is 1"<< std::endl;
+        return false;
+    }
+    if(masksLayer->inferDims.numDims != 2U) {
+        std::cerr << "Network det_masks dims is : " <<
+            masksLayer->inferDims.numDims << " expect is 2"<< std::endl;
+        return false;
+    }
+
+    const char* log_enable = std::getenv("ENABLE_DEBUG");
+
+
+    int* p_keep_count = (int *) num_detsLayer->buffer;
+    float* p_bboxes = (float *) boxesLayer->buffer;
+    float* p_scores = (float *) scoresLayer->buffer;
+    unsigned int* p_classes = (unsigned int *) classesLayer->buffer;
+    float *p_mask = (float *)  masksLayer->buffer;
+
+    const float threshold = detectionParams.perClassThreshold[0];
+
+    NvDsInferDims inferDims_p_bboxes = boxesLayer->inferDims;
+    int numElements_p_bboxes=inferDims_p_bboxes.numElements;
+
+    
+    const int mask_resolution = sqrt(masksLayer->inferDims.d[1]);
+    std::cout << "mask_resolution: " << mask_resolution << std::endl;
+
+
+    if(log_enable != NULL && std::stoi(log_enable)) {
+        std::cout << "keep cout: " << p_keep_count[0] << std::endl;
+    }
+
+    float max_bbox=0;
+    for (int i=0; i < numElements_p_bboxes; i++){
+        if ( max_bbox < p_bboxes[i] )
+            max_bbox=p_bboxes[i];
+    }
+
+    if (p_keep_count[0] > 0){
+        assert (!(max_bbox < 2.0));
+
+       for (int i = 0; i < p_keep_count[0]; i++) {
+           
+            if ( p_scores[i] < threshold) continue;
+
+            if ((unsigned int) p_classes[i] >= detectionParams.numClassesConfigured) {
+                printf("Error: The number of classes configured in the GIE config-file (postprocess > num_detected_classes) is incorrect.\n");
+                printf("Detected class index: %u\n", (unsigned int) p_classes[i]);
+                continue;
+            }
+            assert((unsigned int) p_classes[i] < detectionParams.numClassesConfigured);
+            
+            NvDsInferInstanceMaskInfo object;
+            object.classId = (int) p_classes[i];
+            object.detectionConfidence = p_scores[i];
+
+            object.left=p_bboxes[4*i];
+            object.top=p_bboxes[4*i+1];
+            object.width=(p_bboxes[4*i+2] - object.left);
+            object.height= (p_bboxes[4*i+3] - object.top);
+
+            if (log_enable != NULL && std::stoi(log_enable)) {
+                std::cout << "label/conf/ x/y w/h -- "
+                << p_classes[i] << " "
+                << p_scores[i] << " "
+                << object.left << " " << object.top << " " << object.width << " "<< object.height << " "
+                << std::endl;
+            }
+
+            object.left=CLIP(object.left, 0, networkInfo.width - 1);
+            object.top=CLIP(object.top, 0, networkInfo.height - 1);
+            object.width=CLIP(object.width, 0, networkInfo.width - 1);
+            object.height=CLIP(object.height, 0, networkInfo.height - 1);
+
+
+            object.mask_size = sizeof(float) * mask_resolution * mask_resolution;
+            object.mask = new float[mask_resolution * mask_resolution];
+            object.mask_width = mask_resolution;
+            object.mask_height = mask_resolution;
+
+            const float* rawMask = reinterpret_cast<const float*>(p_mask + i * mask_resolution * mask_resolution);
+
+            //float *rawMask = reinterpret_cast<float *>(p_mask + mask_resolution * mask_resolution * i);
+            
+            int size = mask_resolution * mask_resolution;
+            printRawMask(rawMask, size);
+
+            memcpy(object.mask, rawMask, sizeof(float) * mask_resolution * mask_resolution);
+
+            objectList.push_back(object);
+       }
+    }
+    return true;
+}
+
+
 CHECK_CUSTOM_PARSE_FUNC_PROTOTYPE(NvDsInferYoloNMS);
+CHECK_CUSTOM_INSTANCE_MASK_PARSE_FUNC_PROTOTYPE(NvDsInferYoloMask);
