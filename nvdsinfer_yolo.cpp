@@ -36,13 +36,6 @@
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 #define CLIP(a,min,max) (MAX(MIN(a, max), min))
 
-void printRawMask(const float* rawMask, int size) {
-    for (int i = 0; i < size; ++i) {
-        std::cout << rawMask[i] << " ";
-    }
-    std::cout << std::endl;
-}
-
 /* C-linkage to prevent name-mangling */
 extern "C"
 bool NvDsInferYoloNMS (std::vector<NvDsInferLayerInfo> const &outputLayersInfo,
@@ -316,7 +309,7 @@ extern "C" bool NvDsInferYoloMask(
                 printf("Detected class index: %u\n", (unsigned int) p_classes[i]);
                 continue;
             }
-            assert((unsigned int) p_classes[i] < detectionParams.numClassesConfigured);
+            //assert((unsigned int) p_classes[i] < detectionParams.numClassesConfigured);
             
             NvDsInferInstanceMaskInfo object;
             object.classId = (int) p_classes[i];
@@ -351,7 +344,6 @@ extern "C" bool NvDsInferYoloMask(
             //float *rawMask = reinterpret_cast<float *>(p_mask + mask_resolution * mask_resolution * i);
             
             int size = mask_resolution * mask_resolution;
-            printRawMask(rawMask, size);
 
             memcpy(object.mask, rawMask, sizeof(float) * mask_resolution * mask_resolution);
 
