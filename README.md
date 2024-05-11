@@ -1,14 +1,14 @@
-# NvDsInferYoloNMS for Gst-nvinferserver
+# NvDsInferYolo for Gst-nvinferserver
 
 This repository provides a custom implementation of parsing function to the [Gst-nvinferserver](https://docs.nvidia.com/metropolis/deepstream/dev-guide/text/DS_plugin_gst-nvinferserver.html) plugin when use YOLOv7/YOLOv9 model served by Triton Server using custom TensorRT plugin [Yolo NMS](https://github.com/levipereira/TensorRT/tree/release/8.6/plugin/yoloNMSPlugin) plugin exported by ONNX.
 
 
-By using the parsing function provided by `NvDsInferYoloNMS`, handling the number of classes dynamically becomes easier. This eliminates the need to hardcode the number of classes, allowing the same plugin to be used for different YOLOv9 models with varying numbers of classes.
+By using the parsing function provided by `NvDsInferYolo`, handling the number of classes dynamically becomes easier. This eliminates the need to hardcode the number of classes, allowing the same plugin to be used for different YOLOv9 models with varying numbers of classes.
 
-- Use parse function `NvDsInferYoloNMS` for YOLO Exported ONNX model with End2End
+- Use parse function `NvDsInferYolo` for YOLO Exported ONNX model with End2End
 
 
-# Deployment Guide for NvDsInferYoloNMS
+# Deployment Guide for NvDsInferYolo
 
 
 ## Cloning Repository and Installation
@@ -46,7 +46,7 @@ Snippet [Gst-nvinferserver](https://docs.nvidia.com/metropolis/deepstream/dev-gu
     labelfile_path: "labels.txt"
     detection {
       num_detected_classes: 80
-      custom_parse_bbox_func: "NvDsInferYoloNMS"
+      custom_parse_bbox_func: "NvDsInferYolo"
     }
   }
   custom_lib {
