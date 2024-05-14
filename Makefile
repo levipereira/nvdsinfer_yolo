@@ -45,7 +45,7 @@ $(TARGET_LIB) : $(SRCFILES)
 	$(CC) -o $@ $^ $(CFLAGS) $(LFLAGS)
 
 install: $(TARGET_LIB)
-	cp $(TARGET_LIB) ../../../lib
+	cp $(TARGET_LIB) /opt/nvidia/deepstream/deepstream/lib/
 
 clean:
 	rm -rf $(TARGET_LIB)

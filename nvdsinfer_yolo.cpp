@@ -343,8 +343,6 @@ extern "C" bool NvDsInferYoloMask(
 
             //float *rawMask = reinterpret_cast<float *>(p_mask + mask_resolution * mask_resolution * i);
             
-            int size = mask_resolution * mask_resolution;
-
             memcpy(object.mask, rawMask, sizeof(float) * mask_resolution * mask_resolution);
 
             objectList.push_back(object);
