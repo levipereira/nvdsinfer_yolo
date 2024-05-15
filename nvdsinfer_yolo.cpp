@@ -281,11 +281,8 @@ extern "C" bool NvDsInferYoloMask(
 
     NvDsInferDims inferDims_p_bboxes = boxesLayer->inferDims;
     int numElements_p_bboxes=inferDims_p_bboxes.numElements;
-
     
     const int mask_resolution = sqrt(masksLayer->inferDims.d[1]);
-    std::cout << "mask_resolution: " << mask_resolution << std::endl;
-
 
     if(log_enable != NULL && std::stoi(log_enable)) {
         std::cout << "keep cout: " << p_keep_count[0] << std::endl;
