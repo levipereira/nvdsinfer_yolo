@@ -185,6 +185,10 @@ bool NvDsInferYoloNMS (std::vector<NvDsInferLayerInfo> const &outputLayersInfo,
                 if (hasIndicesLayer) { 
                     std::cout << p_indices[i] << " ";
                 }
+                else 
+                {
+                    std::cout << "None" << " ";
+                }
                 std::cout << p_classes[i] << " "
                     << p_scores[i] << " "
                     << object.left << " " << object.top << " " << object.width << " " << object.height
