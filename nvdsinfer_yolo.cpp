@@ -55,10 +55,10 @@ bool NvDsInferYoloNMS (std::vector<NvDsInferLayerInfo> const &outputLayersInfo,
                                    NvDsInferNetworkInfo  const &networkInfo,
                                    NvDsInferParseDetectionParams const &detectionParams,
                                    std::vector<NvDsInferObjectDetectionInfo> &objectList) {
-    if(outputLayersInfo.size() != 5)
+    if (outputLayersInfo.size() != 4 && outputLayersInfo.size() != 5)
     {
         std::cerr << "Mismatch in the number of output buffers."
-                  << "Expected 4 output buffers, detected in the network :"
+                  << "Expected 4 or 5 output buffers, detected in the network: "
                   << outputLayersInfo.size() << std::endl;
         return false;
     }
@@ -72,14 +72,22 @@ bool NvDsInferYoloNMS (std::vector<NvDsInferLayerInfo> const &outputLayersInfo,
         }
         return nullptr;
     };
-
+    
     const NvDsInferLayerInfo *num_detsLayer = layerFinder("num_dets");
     const NvDsInferLayerInfo *boxesLayer = layerFinder("det_boxes");
     const NvDsInferLayerInfo *scoresLayer = layerFinder("det_scores");
     const NvDsInferLayerInfo *classesLayer = layerFinder("det_classes");
-    const NvDsInferLayerInfo *indicesLayer = layerFinder("det_indices");
+    const NvDsInferLayerInfo *indicesLayer = nullptr;  
 
-    if (!num_detsLayer || !boxesLayer || !scoresLayer || !classesLayer || !indicesLayer) {
+    if (outputLayersInfo.size() == 5) 
+    {
+        indicesLayer = layerFinder("det_indices");
+        
+    }
+
+    bool hasIndicesLayer = (indicesLayer != nullptr);
+
+    if (!num_detsLayer || !boxesLayer || !scoresLayer || !classesLayer || (hasIndicesLayer  && !indicesLayer) ) {
         if (!num_detsLayer) {
             std::cerr << "  - num_detsLayer: Missing or unsupported data type." << std::endl;
         }
@@ -122,7 +130,7 @@ bool NvDsInferYoloNMS (std::vector<NvDsInferLayerInfo> const &outputLayersInfo,
             classesLayer->inferDims.numDims << " expect is 1"<< std::endl;
         return false;
     }
-    if(indicesLayer->inferDims.numDims != 1U) {
+    if (hasIndicesLayer && indicesLayer->inferDims.numDims != 1U) {
         std::cerr << "Network det_indices dims is : " <<
             indicesLayer->inferDims.numDims << " expect is 1"<< std::endl;
         return false;
@@ -131,9 +139,12 @@ bool NvDsInferYoloNMS (std::vector<NvDsInferLayerInfo> const &outputLayersInfo,
     const char* log_enable = std::getenv("ENABLE_DEBUG");
 
     int* p_keep_count = (int *) num_detsLayer->buffer;
-    int* p_indices = (int *) indicesLayer->buffer;
     float* p_bboxes = (float *) boxesLayer->buffer;
+    int* p_indices = nullptr; 
 
+    if (hasIndicesLayer){
+        p_indices = (int *)indicesLayer->buffer;
+    }
     NvDsInferDims inferDims_p_bboxes = boxesLayer->inferDims;
     int numElements_p_bboxes=inferDims_p_bboxes.numElements;
 
@@ -170,12 +181,14 @@ bool NvDsInferYoloNMS (std::vector<NvDsInferLayerInfo> const &outputLayersInfo,
             object.height= (p_bboxes[4*i+3] - object.top);
 
             if(log_enable != NULL && std::stoi(log_enable)) {
-                std::cout << "idx/label/conf/ x/y w/h -- "
-                << p_indices[i] << " "
-                << p_classes[i] << " "
-                << p_scores[i] << " "
-                << object.left << " " << object.top << " " << object.width << " "<< object.height << " "
-                << std::endl;
+                std::cout << "idx/label/conf/ x/y w/h -- ";
+                if (hasIndicesLayer) { 
+                    std::cout << p_indices[i] << " ";
+                }
+                std::cout << p_classes[i] << " "
+                    << p_scores[i] << " "
+                    << object.left << " " << object.top << " " << object.width << " " << object.height
+                    << std::endl;
             }
 
             object.left=CLIP(object.left, 0, networkInfo.width - 1);
