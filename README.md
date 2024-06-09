@@ -1,7 +1,5 @@
 # NvDsInferYolo  parse Function -  DeepStream 
 
-# This repo is being deprecated: Please use https://github.com/levipereira/nvdsinfer_yolo
-
 This repository provides a custom implementation of parsing function to DeepStream for YOLO models exported using custom Plugins EfficientNMSX_TRT and ROIAling_TRT for Instance Segmentation Models and EfficientNMS_TRT for Detection Models.
 
 `NvDsInferYoloMask` - For Segmentation Models <br>
