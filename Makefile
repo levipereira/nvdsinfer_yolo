@@ -24,24 +24,30 @@
 # https://github.com/levipereira
 ################################################################################
 
-CC:= g++
+CC := g++
+CFLAGS := -Wall -std=c++11
+CFLAGS += -shared -fPIC
+CFLAGS += -I/opt/nvidia/deepstream/deepstream/sources/includes \
+          -I/usr/local/cuda-$(CUDA_VER)/include
 
-CFLAGS:= -Wall -std=c++11
+# Verifica a versão do CUDA e ajusta as bibliotecas de acordo
+CUDA_MAJOR_VER := $(shell echo $(CUDA_VER) | cut -d. -f1)
+CUDA_MINOR_VER := $(shell echo $(CUDA_VER) | cut -d. -f2)
 
-CFLAGS+= -shared -fPIC
+ifeq ($(shell [ $(CUDA_MAJOR_VER) -ge 12 ] && [ $(CUDA_MINOR_VER) -ge 2 ] && echo true), true)
+    LIBS := -lnvinfer
+else
+    LIBS := -lnvinfer -lnvparsers
+endif
 
-CFLAGS+= -I/opt/nvidia/deepstream/deepstream/sources/includes \
-         -I /usr/local/cuda-$(CUDA_VER)/include
+LFLAGS := -Wl,--start-group $(LIBS) -Wl,--end-group
 
-LIBS:= -lnvinfer -lnvparsers
-LFLAGS:= -Wl,--start-group $(LIBS) -Wl,--end-group
-
-SRCFILES:= nvdsinfer_yolo.cpp 
-TARGET_LIB:= libnvds_infer_yolo.so
+SRCFILES := nvdsinfer_yolo.cpp 
+TARGET_LIB := libnvds_infer_yolo.so
 
 all: $(TARGET_LIB)
 
-$(TARGET_LIB) : $(SRCFILES)
+$(TARGET_LIB): $(SRCFILES)
 	$(CC) -o $@ $^ $(CFLAGS) $(LFLAGS)
 
 install: $(TARGET_LIB)
