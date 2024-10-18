@@ -30,7 +30,6 @@ CFLAGS += -shared -fPIC
 CFLAGS += -I/opt/nvidia/deepstream/deepstream/sources/includes \
           -I/usr/local/cuda-$(CUDA_VER)/include
 
-# Verifica a versão do CUDA e ajusta as bibliotecas de acordo
 CUDA_MAJOR_VER := $(shell echo $(CUDA_VER) | cut -d. -f1)
 CUDA_MINOR_VER := $(shell echo $(CUDA_VER) | cut -d. -f2)
 
